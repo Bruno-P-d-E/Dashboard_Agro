@@ -214,7 +214,8 @@ if len(df_agregado) > 0:
 # MAPA 3D INTERATIVO - CORREÇÃO FINAL
 # ===========================
 if df_municipios is not None:
-    st.header("🗺️ Visualização tridimensional da produção de soja por município")
+    st.header("🗺️ Mapa 3D – Distribuição Espacial da Produção")
+    st.info("Visualização tridimensional da variáveis de produção de soja por município. A altura das colunas representa o volume")
     
     # Seleção de ano para o mapa
     anos_mapa_disponiveis = sorted(df_filtrado['ano'].unique())
