@@ -793,6 +793,6 @@ st.markdown("---")
 st.markdown("""
     <div style='text-align: center; color: #683;'>
         🌱 <b>Dashboard Inteligente - Soja Paraná</b> | 
-        Fonte: PAM/SIDRA + NASA POWER | 
+        Fonte: PAM/SIDRA + NASA POWER | Desenvolvido por: Bruno Proença
     </div>
 """, unsafe_allow_html=True)
