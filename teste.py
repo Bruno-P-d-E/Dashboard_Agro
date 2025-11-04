@@ -181,7 +181,7 @@ df_agregado = df_filtrado.groupby('ano').agg({
 # ===========================
 # MÉTRICAS PRINCIPAIS
 # ===========================
-st.header("📊 Indicadores Principais - Paraná (Último Ano)")
+st.header("📊 Resumo dos principais indicadores de produção e rendimento de soja no último ano agrícola.")
 
 if len(df_agregado) > 0:
     ultimo_ano = df_agregado.iloc[-1]
@@ -214,7 +214,7 @@ if len(df_agregado) > 0:
 # MAPA 3D INTERATIVO - CORREÇÃO FINAL
 # ===========================
 if df_municipios is not None:
-    st.header("🗺️ Mapa 3D - Distribuição Espacial da Produção")
+    st.header("🗺️ Visualização tridimensional da produção de soja por município")
     
     # Seleção de ano para o mapa
     anos_mapa_disponiveis = sorted(df_filtrado['ano'].unique())
@@ -408,7 +408,7 @@ else:
 # ===========================
 # GRÁFICOS PRINCIPAIS
 # ===========================
-st.header("📈 Análise Produtiva e Perdas")
+st.header("📈 Avaliação temporal da evolução da área cultivada, perdas percentuais e variação da produtividade.")
 
 col1, col2 = st.columns(2)
 
@@ -420,7 +420,7 @@ with col1:
                               name='Colhida', line=dict(color='#27ae60', width=3), mode='lines+markers'))
     fig1.add_trace(go.Scatter(x=df_agregado['ano'], y=df_agregado['Área perdida (Hectares)'],
                               name='Perdida', line=dict(color='#e74c3c', width=3), fill='tozeroy', mode='lines+markers'))
-    fig1.update_layout(title='<b>Evolução da Área: Plantada vs Colhida vs Perdida</b>', 
+    fig1.update_layout(title='<b>Evolução da Área e Perdas: mostra o comportamento da área plantada versus área perdida ao longo dos anos</b>', 
                       xaxis_title='Ano', yaxis_title='Hectares', hovermode='x unified', height=450)
     st.plotly_chart(fig1, use_container_width=True)
 
@@ -430,7 +430,7 @@ with col2:
                           name='Produção', marker_color='#3498db'), secondary_y=False)
     fig2.add_trace(go.Scatter(x=df_agregado['ano'], y=df_agregado['Percentual de perda (%)'],
                               name='% Perda', line=dict(color='#e74c3c', width=3), mode='lines+markers'), secondary_y=True)
-    fig2.update_layout(title='<b>Produção vs Percentual de Perda</b>', hovermode='x unified', height=450)
+    fig2.update_layout(title='<b>Produtividade Média: acompanha o rendimento médio por hectare ao longo dos anos</b>', hovermode='x unified', height=450)
     fig2.update_xaxes(title_text="Ano")
     fig2.update_yaxes(title_text="Toneladas", secondary_y=False)
     fig2.update_yaxes(title_text="% Perda", secondary_y=True)
@@ -442,7 +442,7 @@ with col1:
     fig3 = go.Figure()
     fig3.add_trace(go.Scatter(x=df_agregado['ano'], y=df_agregado['Rendimento médio da produção (Quilogramas por Hectare)'],
                               mode='lines+markers', line=dict(color='#9b59b6', width=3), marker=dict(size=12)))
-    fig3.update_layout(title='<b>Rendimento Médio</b>', xaxis_title='Ano', yaxis_title='kg/ha', height=400)
+    fig3.update_layout(title='<b>Rendimento Médio: representa o rendimento médio da produção quilogramas por hectare ao longo dos anos</b>', xaxis_title='Ano', yaxis_title='kg/ha', height=400)
     st.plotly_chart(fig3, use_container_width=True)
 
 with col2:
@@ -450,7 +450,7 @@ with col2:
     fig4.add_trace(go.Bar(x=df_agregado['ano'], y=df_agregado['Valor da produção (Mil Reais)']/1000,
                           marker_color='#16a085', text=df_agregado['Valor da produção (Mil Reais)']/1000,
                           texttemplate='R$ %{text:.1f}M', textposition='outside'))
-    fig4.update_layout(title='<b>Valor da Produção</b>', xaxis_title='Ano', yaxis_title='Milhões R$', height=400)
+    fig4.update_layout(title='<b>Valor da Produção: evolução do valor econômico total (R$) ao longo dos anos</b>', xaxis_title='Ano', yaxis_title='Milhões R$', height=400)
     st.plotly_chart(fig4, use_container_width=True)
 
 # ===========================
@@ -554,7 +554,8 @@ fig_top.add_vline(x=0, line_dash="dash", line_color="gray")
 st.plotly_chart(fig_top, use_container_width=True)
 
 # Análise detalhada das top 3
-st.subheader(f"🔬 Análise Detalhada: Top 3 Variáveis - {titulo_ano}")
+st.subheader("🔍 Análise Detalhada – Top 3 Variáveis (Todos os Anos)")
+st.info(f"🔬 Relação entre as três variáveis climáticas de maior impacto e a produtividade média da soja, com classificação automática da força e direção da correlação - {titulo_ano}")
 
 n_pontos = len(df_para_correlacao)
 st.info(f"📊 Análise baseada em **{n_pontos} registros** ({titulo_ano})")
@@ -578,7 +579,7 @@ for idx, row in top3.iterrows():
                     size='Quantidade produzida (Toneladas)',
                     hover_data=['Município'],
                     trendline='ols',
-                    title=f"{row['Variável Climática']} vs {metrica_foco.split('(')[0].strip()}"
+                    title=f"Mostram o comportamento de dispersão ({metrica_foco.split('(')[0].strip()}) × ({row['Variável Climática']})"
                 )
             except:
                 fig_scatter = px.scatter(
@@ -588,7 +589,7 @@ for idx, row in top3.iterrows():
                     color='ano',
                     size='Quantidade produzida (Toneladas)',
                     hover_data=['Município'],
-                    title=f"{row['Variável Climática']} vs {metrica_foco.split('(')[0].strip()}"
+                    title=f"Mostram o comportamento de dispersão ({metrica_foco.split('(')[0].strip()}) × ({row['Variável Climática']})"
                 )
                 
                 if len(df_scatter) > 1:
@@ -617,23 +618,27 @@ for idx, row in top3.iterrows():
             else:
                 intensidade = "🟢 Fraca"
             
-            st.metric("Intensidade", intensidade)
+            st.metric("Indica intensidade (🟢 Fraca, 🟡 Moderada, 🔴 Forte)", intensidade)
             
             direcao = "📈 Positiva" if row['Correlação'] > 0 else "📉 Negativa"
-            st.metric("Direção", direcao)
+            st.metric("direção (positiva ou negativa)", direcao)
             
-            st.markdown("**💡 Interpretação:**")
+            st.markdown("**Caixa de interpretação rápida:** explica o tipo de associação observada.")
             if row['Correlação'] > 0:
-                st.success(f"Aumento de {row['Variável Climática']} está associado ao aumento de {metrica_foco.split('(')[0].strip()}")
+                st.success(f"Aumento de {row['Variável Climática']} pode estar associado ao aumento de {metrica_foco.split('(')[0].strip()}")
             else:
-                st.warning(f"Aumento de {row['Variável Climática']} está associado à redução de {metrica_foco.split('(')[0].strip()}")
+                st.warning(f"Aumento de {row['Variável Climática']} pode estar associado à redução de {metrica_foco.split('(')[0].strip()}")
 
 # ===========================
 # MAPA DE CALOR: Correlações por Decêndio
 # ===========================
 st.header(f"🗺️ Mapa de Calor: Ciclo Completo da Safra - {titulo_ano}")
+# descrição do mapa de calor
 
-st.info("📅 **Ciclo da Soja:** Ano 1 (Dec 26-36: Set-Dez) → Ano 2 (Dec 1-15: Jan-Mai)")
+st.info("📅 **Ciclo da Soja:** Ano 1 (Dec 26-36: Set-Dez) → Ano 2 (Dec 1-15: Jan-Mai)" \
+''' Mapa de correlações entre variáveis climáticas e produtividade ao longo das fases fenológicas da cultura.
+Permite identificar os períodos de maior sensibilidade climática e variáveis críticas por estágio.''')
+
 
 variaveis_disponiveis = sorted(df_corr_foco['Variável Climática'].unique())
 vars_heatmap = st.multiselect(
@@ -730,7 +735,7 @@ if vars_heatmap:
         
         # Resumo por fase
         st.subheader("📊 Correlação Média por Fase da Safra")
-        
+        st.info("📋 Correlação média consolidada das variáveis climáticas mais relevantes em cada fase fenológica, indicando os estágios com maior dependência climática da produtividade.")
         col1, col2 = st.columns(2)
         
         with col1:
@@ -753,7 +758,7 @@ if vars_heatmap:
 # RANKING DE MUNICÍPIOS
 # ===========================
 st.header("🏘️ Ranking de Municípios")
-
+st.info("📋 Classificação dos municípios paranaenses com melhor desempenho produtivo e econômico na soja, considerando área cultivada, produtividade média e valor total da produção.")
 ano_rank = st.selectbox("Ano para ranking:", anos_selecionados, index=len(anos_selecionados)-1)
 df_ano = df_filtrado[df_filtrado['ano'] == ano_rank].copy()
 
@@ -762,7 +767,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     top_prod = df_ano.nlargest(10, 'Quantidade produzida (Toneladas)')
     fig_p = px.bar(top_prod, x='Quantidade produzida (Toneladas)', y='Município', orientation='h',
-                   title=f'<b>Top 10 - Produção ({ano_rank})</b>', color='Quantidade produzida (Toneladas)',
+                   title=f'<b>Top 10 – Produção Total (toneladas)({ano_rank})</b>', color='Quantidade produzida (Toneladas)',
                    color_continuous_scale='Greens')
     fig_p.update_layout(height=500, showlegend=False)
     st.plotly_chart(fig_p, use_container_width=True)
@@ -770,7 +775,7 @@ with col1:
 with col2:
     top_rend = df_ano.nlargest(10, 'Rendimento médio da produção (Quilogramas por Hectare)')
     fig_r = px.bar(top_rend, x='Rendimento médio da produção (Quilogramas por Hectare)', y='Município',
-                   orientation='h', title=f'<b>Top 10 - Rendimento ({ano_rank})</b>',
+                   orientation='h', title=f'<b>Top 10 – Produtividade Média (kg/ha) ({ano_rank})</b>',
                    color='Rendimento médio da produção (Quilogramas por Hectare)', color_continuous_scale='Blues')
     fig_r.update_layout(height=500, showlegend=False)
     st.plotly_chart(fig_r, use_container_width=True)
@@ -778,7 +783,7 @@ with col2:
 with col3:
     top_perda = df_ano.nlargest(10, 'Área perdida (Hectares)')
     fig_pp = px.bar(top_perda, x='Área perdida (Hectares)', y='Município', orientation='h',
-                    title=f'<b>Top 10 - Perdas ({ano_rank})</b>', color='Área perdida (Hectares)',
+                    title=f'<b>Top 10 – Área Plantada (ha) ({ano_rank})</b>', color='Área perdida (Hectares)',
                     color_continuous_scale='Reds')
     fig_pp.update_layout(height=500, showlegend=False)
     st.plotly_chart(fig_pp, use_container_width=True)
@@ -786,9 +791,8 @@ with col3:
 # Rodapé
 st.markdown("---")
 st.markdown("""
-    <div style='text-align: center; color: #666;'>
+    <div style='text-align: center; color: #683;'>
         🌱 <b>Dashboard Inteligente - Soja Paraná</b> | 
         Fonte: PAM/SIDRA + NASA POWER | 
-        Análise Automática de Correlações Climáticas + Visualização Geoespacial 3D
     </div>
 """, unsafe_allow_html=True)
