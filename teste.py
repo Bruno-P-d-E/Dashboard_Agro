@@ -410,7 +410,8 @@ else:
 # ===========================
 # GRÁFICOS PRINCIPAIS
 # ===========================
-st.header("📈 Avaliação temporal da evolução da área cultivada, perdas percentuais e variação da produtividade.")
+st.header("📈Análise Produtiva")
+st.info("📈 Avaliação temporal da evolução da área cultivada, perdas percentuais e variação da produtividade.")
 
 col1, col2 = st.columns(2)
 
