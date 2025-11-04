@@ -10,7 +10,7 @@ import pydeck as pdk
 
 # Configuração da página
 st.set_page_config(
-    page_title="Dashboardaaaaa Soja Paraná",
+    page_title="Dashboard Soja Paraná",
     page_icon="🌱",
     layout="wide"
 )
@@ -36,7 +36,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # Título
-st.markdown("<h1>🌱 Dashboaaaaaaard - Soja no Paraná (2018-2024)</h1>", unsafe_allow_html=True)
+st.markdown("<h1>🌱 Dashboard - Soja no Paraná (2018-2024)</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center; color: #666;'>Análise Inteligente: Clima + Produtividade + Geolocalização</h3>", unsafe_allow_html=True)
 
 # Carregar dados
