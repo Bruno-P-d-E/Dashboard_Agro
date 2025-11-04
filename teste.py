@@ -10,7 +10,7 @@ import pydeck as pdk
 
 # Configuração da página
 st.set_page_config(
-    page_title="Dashboard Soja Paraná",
+    page_title="Dashboardaaaaa Soja Paraná",
     page_icon="🌱",
     layout="wide"
 )
