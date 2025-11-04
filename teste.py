@@ -181,7 +181,8 @@ df_agregado = df_filtrado.groupby('ano').agg({
 # ===========================
 # MÉTRICAS PRINCIPAIS
 # ===========================
-st.header("📊 Resumo dos principais indicadores de produção e rendimento de soja no último ano agrícola.")
+st.header("📊 Indicadores Principais – Paraná (Último Ano)")
+st.info("📋 Resumo dos principais indicadores de produção e rendimento de soja no último ano agrícola.")
 
 if len(df_agregado) > 0:
     ultimo_ano = df_agregado.iloc[-1]
