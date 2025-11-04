@@ -8,6 +8,7 @@ import re
 from scipy import stats
 import pydeck as pdk
 
+
 # Configuração da página
 st.set_page_config(
     page_title="Dashboard Soja Paraná",
