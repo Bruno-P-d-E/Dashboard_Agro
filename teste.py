@@ -216,7 +216,7 @@ if len(df_agregado) > 0:
 # ===========================
 if df_municipios is not None:
     st.header("🗺️ Mapa 3D – Distribuição Espacial da Produção")
-    st.info("Visualização tridimensional da variáveis de produção de soja por município. A altura das colunas representa o volume")
+    st.info("📋 Visualização tridimensional da variáveis de produção de soja por município. A altura das colunas representa o volume")
     
     # Seleção de ano para o mapa
     anos_mapa_disponiveis = sorted(df_filtrado['ano'].unique())
@@ -460,7 +460,7 @@ with col2:
 # ===========================
 st.header("🌤️ Variáveis Climáticas Mais Relevantes")
 
-st.info("📊 **Análise automática:** Identificando as variáveis climáticas com maior correlação com rendimento, produção e perdas.")
+st.info("📋 **Análise automática:** Identificando as variáveis climáticas com maior correlação com rendimento, produção e perdas.")
 
 # Filtros principais
 col1, col2, col3 = st.columns(3)
