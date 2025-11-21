@@ -38,7 +38,7 @@ st.markdown("""
 
 # Título
 st.markdown("<h1>🌱 Dashboard - Soja no Paraná (2018-2024)</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center; color: #666;'>Análise Inteligente: Clima + Produtividade + Geolocalização</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #000000;'>Análise Inteligente: Clima + Produtividade + Geolocalização</h3>", unsafe_allow_html=True)
 
 # Carregar dados
 @st.cache_data
@@ -212,7 +212,7 @@ if len(df_agregado) > 0:
                      delta_color="inverse")
 
 # ===========================
-# MAPA 3D INTERATIVO - CORREÇÃO FINAL
+# MAPA 3D INTERATIVO
 # ===========================
 if df_municipios is not None:
     st.header("🗺️ Mapa 3D – Distribuição Espacial da Produção")
@@ -269,34 +269,31 @@ if df_municipios is not None:
             max_metrica = df_mapa['metrica_viz'].max()
             df_mapa['elevation'] = (df_mapa['metrica_viz'] / max_metrica) * elevation_max
             
-            # Definição do Color Range (mantida)
+            # Definição do Color Range
             COLOR_RANGE = [
                 [255, 255, 178], [254, 204, 92], [253, 141, 60],
                 [240, 59, 32], [189, 0, 38], [128, 0, 38]
             ]
             
-            # Função auxiliar para mapeamento de cor (ajustada a partir da correção anterior)
+            # Função auxiliar para mapeamento de cor
             def map_value_to_color(value, data_max, color_range, alpha=200):
                 """Mapeia um valor numérico para uma cor no COLOR_RANGE."""
                 if data_max == 0 or np.isnan(value) or value == 0:
-                    return [150, 150, 150, alpha] # Cor cinza para NaN ou zero
+                    return [150, 150, 150, alpha]
                 
-                # Para evitar erro de logarítmico (para escala de cor)
-                # Normaliza o valor para uma escala de 0 a 1
                 normalized_value = (value - df_mapa['metrica_viz'].min()) / (data_max - df_mapa['metrica_viz'].min())
                 
                 num_colors = len(color_range)
-                # Garante que o índice fique dentro dos limites [0, num_colors-1]
                 index = int(normalized_value * (num_colors - 1))
                 
                 return color_range[index] + [alpha]
 
-            # Criar a coluna de cor final no DataFrame usando o mapeamento
+            # Criar a coluna de cor final no DataFrame
             df_mapa['fill_color'] = df_mapa['metrica_viz'].apply(
                 lambda x: map_value_to_color(x, max_metrica, COLOR_RANGE)
             )
 
-            # Criar camada de Colunas (ColumnLayer)
+            # Criar camada de Colunas
             column_layer = pdk.Layer(
                 "ColumnLayer",
                 data=df_mapa,
@@ -304,10 +301,7 @@ if df_municipios is not None:
                 get_elevation="elevation",
                 elevation_scale=elevation_scale,
                 radius=column_width,
-                # CORREÇÃO: Referencia a nova coluna 'fill_color'
                 get_fill_color="fill_color", 
-                # Adiciona as colunas para o tooltip reconhecer no hover
-                # A coluna 'nome' já está disponível; 'metrica_viz' é a coluna com o valor
                 get_tooltip=['nome', 'metrica_viz'], 
                 pickable=True,
                 auto_highlight=True,
@@ -327,8 +321,7 @@ if df_municipios is not None:
                 bearing=0
             )
             
-            # Tooltip ajustado para sintaxe Deck.gl e nome da métrica
-            # Removido o formato numérico complexo para evitar erro de parse
+            # Tooltip
             metrica_nome_tooltip = metrica_mapa.split('(')[0].strip()
             tooltip = {
                 "html": f"<b>Município:</b> {{nome}}<br/>"
@@ -346,12 +339,9 @@ if df_municipios is not None:
                 tooltip=tooltip
             ))
             
-            # ===========================
-            # NOVO: Legenda de Cores (Mapa Abaixo)
-            # ===========================
+            # Legenda de Cores
             st.subheader("🎨 Legenda de Cores")
             
-            # Calcula os limites para cada cor
             min_val = df_mapa['metrica_viz'].min()
             max_val = df_mapa['metrica_viz'].max()
             step = (max_val - min_val) / len(COLOR_RANGE)
@@ -360,20 +350,16 @@ if df_municipios is not None:
             legend_html += "<div style='display: flex; flex-direction: column;'>"
             
             for i, color_rgb in enumerate(COLOR_RANGE):
-                # O Pydeck usa a cor mais escura para o valor mais alto.
                 color_index = len(COLOR_RANGE) - 1 - i
                 color = COLOR_RANGE[color_index]
                 
-                # Calcula o limite inferior e superior para o texto da legenda
                 lower_bound = min_val + (color_index * step)
                 upper_bound = min_val + ((color_index + 1) * step)
                 
-                # Cor no formato CSS
                 css_color = f"rgb({color[0]}, {color[1]}, {color[2]})"
                 
                 legend_html += f"<div style='display: flex; align-items: center; margin-bottom: 3px;'><br/><div style='width: 20px; height: 10px; background-color: {css_color}; margin-right: 10px; border: 1px solid #333;'></div><br/><span>{upper_bound:.2f} (Máx)</span></div>"
             
-            # Adiciona o limite mínimo e reverte a ordem para a legenda
             legend_html = legend_html.replace(f"{max_val:.2f} (Máx)", f"{max_val:.2f} (Máx)")
             legend_html += f"""
                 <div style='margin-top: 5px; text-align: left;'>
@@ -383,9 +369,8 @@ if df_municipios is not None:
             
             st.markdown(legend_html, unsafe_allow_html=True)
             
-            # Estatísticas do mapa (mantidas)
+            # Estatísticas do mapa
             col1, col2, col3, col4 = st.columns(4)
-            # ... (continuação das estatísticas) ...
             with col1:
                 st.metric("Municípios no Mapa", len(df_mapa))
             with col2:
@@ -395,12 +380,12 @@ if df_municipios is not None:
             with col4:
                 st.metric("Mínimo", f"{df_mapa['metrica_viz'].min():.2f}")
             
-            # Top 10 municípios no mapa (mantidos)
+            # Top 10 municípios no mapa
             with st.expander("🏆 Top 10 Municípios - Visualização Detalhada"):
                 top_10_mapa = df_mapa.nlargest(10, 'metrica_viz')[['nome', metrica_mapa]]
                 st.dataframe(top_10_mapa, hide_index=True, use_container_width=True)
         else:
-            st.warning("⚠️ Não foi possível fazer o merge dos dados geográficos (código IBGE) para o ano selecionado. Verifique a coluna 'Código IBGE' no arquivo PAM.")
+            st.warning("⚠️ Não foi possível fazer o merge dos dados geográficos para o ano selecionado.")
     else:
         st.info("ℹ️ Selecione um ano disponível nos filtros para exibir o mapa.")
 else:
@@ -423,8 +408,11 @@ with col1:
                               name='Colhida', line=dict(color='#27ae60', width=3), mode='lines+markers'))
     fig1.add_trace(go.Scatter(x=df_agregado['ano'], y=df_agregado['Área perdida (Hectares)'],
                               name='Perdida', line=dict(color='#e74c3c', width=3), fill='tozeroy', mode='lines+markers'))
-    fig1.update_layout(title='<b>Evolução da Área e Perdas: mostra o comportamento da área plantada versus área perdida ao longo dos anos</b>', 
-                      xaxis_title='Ano', yaxis_title='Hectares', hovermode='x unified', height=450)
+    fig1.update_layout(title='<b>Evolução da Área e Perdas</b>', 
+                      xaxis_title='Ano', yaxis_title='Hectares', hovermode='x unified', height=450,
+                      font=dict(color='black'))
+    fig1.update_xaxes(type='category', tickfont=dict(color='black'), title_font=dict(color='black')) 
+    fig1.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
     st.plotly_chart(fig1, use_container_width=True)
 
 with col2:
@@ -433,10 +421,11 @@ with col2:
                           name='Produção', marker_color='#3498db'), secondary_y=False)
     fig2.add_trace(go.Scatter(x=df_agregado['ano'], y=df_agregado['Percentual de perda (%)'],
                               name='% Perda', line=dict(color='#e74c3c', width=3), mode='lines+markers'), secondary_y=True)
-    fig2.update_layout(title='<b>Produtividade Média: acompanha o rendimento médio por hectare ao longo dos anos</b>', hovermode='x unified', height=450)
-    fig2.update_xaxes(title_text="Ano")
-    fig2.update_yaxes(title_text="Toneladas", secondary_y=False)
-    fig2.update_yaxes(title_text="% Perda", secondary_y=True)
+    fig2.update_layout(title='<b>Produção e Percentual de Perda</b>', hovermode='x unified', height=450,
+                       font=dict(color='black'))
+    fig2.update_xaxes(title_text="Ano", type='category', tickfont=dict(color='black'), title_font=dict(color='black')) 
+    fig2.update_yaxes(title_text="Toneladas", secondary_y=False, tickfont=dict(color='black'), title_font=dict(color='black'))
+    fig2.update_yaxes(title_text="% Perda", secondary_y=True, tickfont=dict(color='black'), title_font=dict(color='black'))
     st.plotly_chart(fig2, use_container_width=True)
 
 col1, col2 = st.columns(2)
@@ -445,7 +434,10 @@ with col1:
     fig3 = go.Figure()
     fig3.add_trace(go.Scatter(x=df_agregado['ano'], y=df_agregado['Rendimento médio da produção (Quilogramas por Hectare)'],
                               mode='lines+markers', line=dict(color='#9b59b6', width=3), marker=dict(size=12)))
-    fig3.update_layout(title='<b>Rendimento Médio: representa o rendimento médio da produção quilogramas por hectare ao longo dos anos</b>', xaxis_title='Ano', yaxis_title='kg/ha', height=400)
+    fig3.update_layout(title='<b>Rendimento Médio</b>', xaxis_title='Ano', yaxis_title='kg/ha', height=400,
+                       font=dict(color='black'))
+    fig3.update_xaxes(type='category', tickfont=dict(color='black'), title_font=dict(color='black')) 
+    fig3.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
     st.plotly_chart(fig3, use_container_width=True)
 
 with col2:
@@ -454,13 +446,55 @@ with col2:
                           marker_color='#16a085', text=df_agregado['Valor da produção (Mil Reais)']/1000,
                           texttemplate='R$ %{text:.1f}M', textposition='outside'))
     fig4.update_layout(
-        title='<b>Valor da Produção: evolução do valor econômico total (R$) ao longo dos anos</b>', 
+        title='<b>Valor da Produção</b>', 
         xaxis_title='Ano', 
         yaxis_title='Milhões R$', 
         height=400,
-        yaxis=dict(range=[0, (df_agregado['Valor da produção (Mil Reais)']/1000).max() * 1.15])
+        yaxis=dict(range=[0, (df_agregado['Valor da produção (Mil Reais)']/1000).max() * 1.15]),
+        font=dict(color='black')
     )
+    fig4.update_xaxes(type='category', tickfont=dict(color='black'), title_font=dict(color='black')) 
+    fig4.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
     st.plotly_chart(fig4, use_container_width=True)
+
+# ===========================
+# NOVA SEÇÃO: MATRIZ DE CORRELAÇÃO
+# ===========================
+st.header("🔗 Matriz de Correlação (Variáveis de Produção)")
+st.info("📊 Correlação de Pearson entre as variáveis de área, produção, rendimento e valor.")
+
+# Definindo as colunas para correlação
+cols_correlacao = [
+    'Área plantada (Hectares)',
+    'Área colhida (Hectares)',
+    'Área perdida (Hectares)',
+    'Quantidade produzida (Toneladas)',
+    'Rendimento médio da produção (Quilogramas por Hectare)',
+    'Valor da produção (Mil Reais)',
+    'Valor da produção - percentual do total geral', # Variável solicitada
+    'Percentual de perda (%)' # Adicionado como alternativa caso a anterior não exista no CSV
+]
+
+# Verificar quais colunas realmente existem no DataFrame atual para evitar erros
+cols_validas = [col for col in cols_correlacao if col in df_filtrado.columns]
+
+if len(cols_validas) > 1:
+    corr_matrix = df_filtrado[cols_validas].corr()
+
+    fig_corr = px.imshow(
+        corr_matrix,
+        text_auto='.2f',
+        aspect="auto",
+        color_continuous_scale='RdBu_r',
+        zmin=-1, zmax=1,
+        height=600
+    )
+    fig_corr.update_layout(title='<b>Matriz de Correlação de Pearson</b>', font=dict(color='black'))
+    fig_corr.update_xaxes(tickfont=dict(color='black'))
+    fig_corr.update_yaxes(tickfont=dict(color='black'))
+    st.plotly_chart(fig_corr, use_container_width=True)
+else:
+    st.warning("Colunas insuficientes encontradas no arquivo para gerar a matriz de correlação completa.")
 
 # ===========================
 # VARIÁVEIS CLIMÁTICAS MAIS RELEVANTES
@@ -558,14 +592,17 @@ fig_top.update_layout(
     xaxis_title='Correlação de Pearson',
     yaxis_title='Variável Climática',
     height=max(400, len(df_corr_foco) * 30),
-    xaxis_range=[-1, 1]
+    xaxis_range=[-1, 1],
+    font=dict(color='black')
 )
-fig_top.add_vline(x=0, line_dash="dash", line_color="gray")
+fig_top.update_xaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
+fig_top.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
+fig_top.add_vline(x=0, line_dash="dash", line_color="#000000")
 st.plotly_chart(fig_top, use_container_width=True)
 
 # Análise detalhada das top 3
-st.subheader("🔍 Análise Detalhada – Top 3 Variáveis (Todos os Anos)")
-st.info(f"🔬 Relação entre as três variáveis climáticas de maior impacto e a produtividade média da soja, com classificação automática da força e direção da correlação - {titulo_ano}")
+st.subheader("🔍 Análise Detalhada – Top 3 Variáveis")
+st.info(f"🔬 Relação entre as três variáveis climáticas de maior impacto e a produtividade - {titulo_ano}")
 
 n_pontos = len(df_para_correlacao)
 st.info(f"📊 Análise baseada em **{n_pontos} registros** ({titulo_ano})")
@@ -589,7 +626,7 @@ for idx, row in top3.iterrows():
                     size='Quantidade produzida (Toneladas)',
                     hover_data=['Município'],
                     trendline='ols',
-                    title=f"Mostram o comportamento de dispersão ({metrica_foco.split('(')[0].strip()}) × ({row['Variável Climática']})"
+                    title=f"Dispersão ({metrica_foco.split('(')[0].strip()}) × ({row['Variável Climática']})"
                 )
             except:
                 fig_scatter = px.scatter(
@@ -599,7 +636,7 @@ for idx, row in top3.iterrows():
                     color='ano',
                     size='Quantidade produzida (Toneladas)',
                     hover_data=['Município'],
-                    title=f"Mostram o comportamento de dispersão ({metrica_foco.split('(')[0].strip()}) × ({row['Variável Climática']})"
+                    title=f"Dispersão ({metrica_foco.split('(')[0].strip()}) × ({row['Variável Climática']})"
                 )
                 
                 if len(df_scatter) > 1:
@@ -615,7 +652,9 @@ for idx, row in top3.iterrows():
                         line=dict(color='red', dash='dash', width=2)
                     ))
             
-            fig_scatter.update_layout(height=400)
+            fig_scatter.update_layout(height=400, font=dict(color='black'))
+            fig_scatter.update_xaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
+            fig_scatter.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
             st.plotly_chart(fig_scatter, use_container_width=True)
         
         with col2:
@@ -628,27 +667,24 @@ for idx, row in top3.iterrows():
             else:
                 intensidade = "🟢 Fraca"
             
-            st.metric("Indica intensidade (🟢 Fraca, 🟡 Moderada, 🔴 Forte)", intensidade)
+            st.metric("Intensidade", intensidade)
             
             direcao = "📈 Positiva" if row['Correlação'] > 0 else "📉 Negativa"
-            st.metric("direção (📈 Positiva ou 📉 Negativa)", direcao)
+            st.metric("Direção", direcao)
             
-            st.markdown("**Caixa de interpretação rápida:** explica o tipo de associação observada.")
+            st.markdown("**Interpretação:**")
             if row['Correlação'] > 0:
-                st.success(f"Aumento de {row['Variável Climática']} pode estar associado ao aumento de {metrica_foco.split('(')[0].strip()}")
+                st.success(f"Aumento de {row['Variável Climática']} associado ao aumento de {metrica_foco.split('(')[0].strip()}")
             else:
-                st.warning(f"Aumento de {row['Variável Climática']} pode estar associado à redução de {metrica_foco.split('(')[0].strip()}")
+                st.warning(f"Aumento de {row['Variável Climática']} associado à redução de {metrica_foco.split('(')[0].strip()}")
 
 # ===========================
 # MAPA DE CALOR: Correlações por Decêndio
 # ===========================
 st.header(f"🗺️ Mapa de Calor: Ciclo Completo da Safra - {titulo_ano}")
-# descrição do mapa de calor
 
-st.info("📅 **Ciclo da Soja:** Ano 1 (Dec 26-36: Set-Dez) → Ano 2 (Dec 1-15: Jan-Mai)" \
-''' Mapa de correlações entre variáveis climáticas e produtividade ao longo das fases fenológicas da cultura.
-Permite identificar os períodos de maior sensibilidade climática e variáveis críticas por estágio.''')
-
+st.info("📅 **Ciclo da Soja:** Ano 1 (Dec 26-36: Set-Dez) → Ano 2 (Dec 1-15: Jan-Mai). "
+        "Mapa de correlações entre variáveis climáticas e produtividade ao longo das fases fenológicas.")
 
 variaveis_disponiveis = sorted(df_corr_foco['Variável Climática'].unique())
 vars_heatmap = st.multiselect(
@@ -735,8 +771,14 @@ if vars_heatmap:
             height=max(500, len(pivot_heatmap) * 70),
             xaxis=dict(
                 tickangle=-45,
-                tickfont=dict(size=9)
-            )
+                tickfont=dict(size=9, color='black'),
+                title_font=dict(color='black')
+            ),
+            yaxis=dict(
+                tickfont=dict(color='black'),
+                title_font=dict(color='black')
+            ),
+            font=dict(color='black')
         )
         
         fig_heatmap.add_vline(x=10.5, line_dash="dash", line_color="white", line_width=2)
@@ -745,7 +787,7 @@ if vars_heatmap:
         
         # Resumo por fase
         st.subheader("📊 Correlação Média por Fase da Safra")
-        st.info("📋 Correlação média consolidada das variáveis climáticas mais relevantes em cada fase fenológica, indicando os estágios com maior dependência climática da produtividade.")
+        st.info("📋 Correlação média consolidada em cada fase fenológica.")
         col1, col2 = st.columns(2)
         
         with col1:
@@ -765,38 +807,140 @@ if vars_heatmap:
                           help="Ano2 Dec1-15: Jan-Mai")
 
 # ===========================
-# RANKING DE MUNICÍPIOS
+# RANKING DE MUNICÍPIOS - EVOLUÇÃO ANUAL
 # ===========================
-st.header("🏘️ Ranking de Municípios")
-st.info("📋 Classificação dos municípios paranaenses com melhor desempenho produtivo e econômico na soja, considerando área cultivada, produtividade média e valor total da produção.")
-ano_rank = st.selectbox("Ano para ranking:", anos_selecionados, index=len(anos_selecionados)-1)
-df_ano = df_filtrado[df_filtrado['ano'] == ano_rank].copy()
+st.header("🏘️ Evolução dos Top Municípios")
+st.info("📋 Acompanhamento da evolução anual dos principais municípios produtores de soja no Paraná.")
 
-col1, col2, col3 = st.columns(3)
+# Seleção de número de municípios
+num_municipios = st.slider("Número de municípios no ranking:", 3, 15, 5)
+
+# Identificar top municípios baseado na média de todos os anos filtrados
+top_prod_municipios = df_filtrado.groupby('Município')['Quantidade produzida (Toneladas)'].mean().nlargest(num_municipios).index
+top_rend_municipios = df_filtrado.groupby('Município')['Rendimento médio da produção (Quilogramas por Hectare)'].mean().nlargest(num_municipios).index
+top_area_municipios = df_filtrado.groupby('Município')['Área plantada (Hectares)'].mean().nlargest(num_municipios).index
+top_valor_municipios = df_filtrado.groupby('Município')['Valor da produção (Mil Reais)'].mean().nlargest(num_municipios).index
+
+
+col1, col2 = st.columns(2)
 
 with col1:
-    top_prod = df_ano.nlargest(10, 'Quantidade produzida (Toneladas)')
-    fig_p = px.bar(top_prod, x='Quantidade produzida (Toneladas)', y='Município', orientation='h',
-                   title=f'<b>Top 10 – Produção Total (toneladas)({ano_rank})</b>', color='Quantidade produzida (Toneladas)',
-                   color_continuous_scale='Greens')
-    fig_p.update_layout(height=500, showlegend=False)
+    # Evolução da Produção Total
+    df_prod_top = df_filtrado[df_filtrado['Município'].isin(top_prod_municipios)].copy()
+    
+    fig_p = go.Figure()
+    for municipio in top_prod_municipios:
+        df_mun = df_prod_top[df_prod_top['Município'] == municipio].sort_values('ano')
+        fig_p.add_trace(go.Scatter(
+            x=df_mun['ano'],
+            y=df_mun['Quantidade produzida (Toneladas)'],
+            mode='lines+markers',
+            name=municipio,
+            line=dict(width=2),
+            marker=dict(size=8)
+        ))
+    
+    fig_p.update_layout(
+        title=f'<b>Top {num_municipios} – Evolução da Produção Total</b>',
+        xaxis_title='Ano',
+        yaxis_title='Produção (toneladas)',
+        height=500,
+        hovermode='x unified',
+        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
+        font=dict(color='black')
+    )
+    fig_p.update_xaxes(type='linear', tickfont=dict(color='black'), title_font=dict(color='black')) 
+    fig_p.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
     st.plotly_chart(fig_p, use_container_width=True)
 
 with col2:
-    top_rend = df_ano.nlargest(10, 'Rendimento médio da produção (Quilogramas por Hectare)')
-    fig_r = px.bar(top_rend, x='Rendimento médio da produção (Quilogramas por Hectare)', y='Município',
-                   orientation='h', title=f'<b>Top 10 – Produtividade Média (kg/ha) ({ano_rank})</b>',
-                   color='Rendimento médio da produção (Quilogramas por Hectare)', color_continuous_scale='Blues')
-    fig_r.update_layout(height=500, showlegend=False)
+    # Evolução da Produtividade Média
+    df_rend_top = df_filtrado[df_filtrado['Município'].isin(top_rend_municipios)].copy()
+    
+    fig_r = go.Figure()
+    for municipio in top_rend_municipios:
+        df_mun = df_rend_top[df_rend_top['Município'] == municipio].sort_values('ano')
+        fig_r.add_trace(go.Scatter(
+            x=df_mun['ano'],
+            y=df_mun['Rendimento médio da produção (Quilogramas por Hectare)'],
+            mode='lines+markers',
+            name=municipio,
+            line=dict(width=2),
+            marker=dict(size=8)
+        ))
+    
+    fig_r.update_layout(
+        title=f'<b>Top {num_municipios} – Evolução da Produtividade</b>',
+        xaxis_title='Ano',
+        yaxis_title='Rendimento (kg/ha)',
+        height=500,
+        hovermode='x unified',
+        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
+        font=dict(color='black')
+    )
+    fig_r.update_xaxes(type='linear', tickfont=dict(color='black'), title_font=dict(color='black')) 
+    fig_r.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
     st.plotly_chart(fig_r, use_container_width=True)
 
+col3, col4 = st.columns(2)
+
 with col3:
-    top_perda = df_ano.nlargest(10, 'Área perdida (Hectares)')
-    fig_pp = px.bar(top_perda, x='Área perdida (Hectares)', y='Município', orientation='h',
-                    title=f'<b>Top 10 – Área Plantada (ha) ({ano_rank})</b>', color='Área perdida (Hectares)',
-                    color_continuous_scale='Reds')
-    fig_pp.update_layout(height=500, showlegend=False)
-    st.plotly_chart(fig_pp, use_container_width=True)
+    # Evolução da Área Plantada
+    df_area_top = df_filtrado[df_filtrado['Município'].isin(top_area_municipios)].copy()
+    
+    fig_a = go.Figure()
+    for municipio in top_area_municipios:
+        df_mun = df_area_top[df_area_top['Município'] == municipio].sort_values('ano')
+        fig_a.add_trace(go.Scatter(
+            x=df_mun['ano'],
+            y=df_mun['Área plantada (Hectares)'],
+            mode='lines+markers',
+            name=municipio,
+            line=dict(width=2),
+            marker=dict(size=8)
+        ))
+    
+    fig_a.update_layout(
+        title=f'<b>Top {num_municipios} – Evolução da Área Plantada</b>',
+        xaxis_title='Ano',
+        yaxis_title='Área Plantada (ha)',
+        height=500,
+        hovermode='x unified',
+        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
+        font=dict(color='black')
+    )
+    fig_a.update_xaxes(type='linear', tickfont=dict(color='black'), title_font=dict(color='black')) 
+    fig_a.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
+    st.plotly_chart(fig_a, use_container_width=True)
+
+with col4:
+    # Evolução da Valor da produção (Mil Reais)
+    df_area_top = df_filtrado[df_filtrado['Município'].isin(top_valor_municipios)].copy()
+    
+    fig_a = go.Figure()
+    for municipio in top_valor_municipios:
+        df_mun = df_area_top[df_area_top['Município'] == municipio].sort_values('ano')
+        fig_a.add_trace(go.Scatter(
+            x=df_mun['ano'],
+            y=df_mun['Valor da produção (Mil Reais)'],
+            mode='lines+markers',
+            name=municipio,
+            line=dict(width=2),
+            marker=dict(size=8)
+        ))
+    
+    fig_a.update_layout(
+        title=f'<b>Top {num_municipios} – Valor da produção</b>',
+        xaxis_title='Ano',
+        yaxis_title='Valor da produção (Mil Reais)',
+        height=500,
+        hovermode='x unified',
+        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
+        font=dict(color='black')
+    )
+    fig_a.update_xaxes(type='linear', tickfont=dict(color='black'), title_font=dict(color='black')) 
+    fig_a.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
+    st.plotly_chart(fig_a, use_container_width=True)
 
 # Rodapé
 st.markdown("---")
