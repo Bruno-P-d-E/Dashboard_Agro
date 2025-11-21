@@ -453,7 +453,13 @@ with col2:
     fig4.add_trace(go.Bar(x=df_agregado['ano'], y=df_agregado['Valor da produção (Mil Reais)']/1000,
                           marker_color='#16a085', text=df_agregado['Valor da produção (Mil Reais)']/1000,
                           texttemplate='R$ %{text:.1f}M', textposition='outside'))
-    fig4.update_layout(title='<b>Valor da Produção: evolução do valor econômico total (R$) ao longo dos anos</b>', xaxis_title='Ano', yaxis_title='Milhões R$', height=400)
+    fig4.update_layout(
+        title='<b>Valor da Produção: evolução do valor econômico total (R$) ao longo dos anos</b>', 
+        xaxis_title='Ano', 
+        yaxis_title='Milhões R$', 
+        height=400,
+        yaxis=dict(range=[0, (df_agregado['Valor da produção (Mil Reais)']/1000).max() * 1.15])
+    )
     st.plotly_chart(fig4, use_container_width=True)
 
 # ===========================
@@ -474,7 +480,8 @@ with col2:
         'Rendimento médio da produção (Quilogramas por Hectare)',
         'Quantidade produzida (Toneladas)',
         'Área perdida (Hectares)',
-        'Percentual de perda (%)'
+        'Percentual de perda (%)',
+        'Valor da produção (Mil Reais)'
     ])
 
 with col3:
@@ -624,7 +631,7 @@ for idx, row in top3.iterrows():
             st.metric("Indica intensidade (🟢 Fraca, 🟡 Moderada, 🔴 Forte)", intensidade)
             
             direcao = "📈 Positiva" if row['Correlação'] > 0 else "📉 Negativa"
-            st.metric("direção (positiva ou negativa)", direcao)
+            st.metric("direção (📈 Positiva ou 📉 Negativa)", direcao)
             
             st.markdown("**Caixa de interpretação rápida:** explica o tipo de associação observada.")
             if row['Correlação'] > 0:
@@ -745,7 +752,7 @@ if vars_heatmap:
             ano1_cols = [col for col in pivot_heatmap.columns if col.startswith("Ano1")]
             if ano1_cols:
                 ano1_data = pivot_heatmap[ano1_cols]
-                st.metric("Fase 1: Plantio/Desenvolvimento", 
+                st.metric("Fase 1: Semeadura/Desenvolvimento", 
                           f"{ano1_data.mean().mean():.4f}",
                           help="Ano1 Dec26-36: Set-Dez")
         
@@ -753,7 +760,7 @@ if vars_heatmap:
             ano2_cols = [col for col in pivot_heatmap.columns if col.startswith("Ano2")]
             if ano2_cols:
                 ano2_data = pivot_heatmap[ano2_cols]
-                st.metric("Fase 2: Floração/Maturação", 
+                st.metric("Fase 2: Maturação/Colheita", 
                           f"{ano2_data.mean().mean():.4f}",
                           help="Ano2 Dec1-15: Jan-Mai")
 
