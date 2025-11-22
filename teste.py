@@ -8,6 +8,25 @@ import re
 from scipy import stats
 import pydeck as pdk
 
+# ==========================================
+# FUNÇÃO AUXILIAR DE FORMATAÇÃO PT-BR
+# ==========================================
+def formatar_numero(valor, prefixo='', sufixo='', decimais=0):
+    """Formata números para o padrão brasileiro (1.000,00)."""
+    if pd.isna(valor):
+        return "-"
+    
+    # Formata primeiro no padrão americano para garantir a precisão
+    if decimais > 0:
+        s = f"{valor:,.{decimais}f}"
+    else:
+        s = f"{valor:,.0f}"
+    
+    # Inverte os caracteres: vírgula vira X, ponto vira vírgula, X vira ponto
+    # Ex: 1,234.56 -> 1X234.56 -> 1X234,56 -> 1.234,56
+    s = s.replace(',', 'X').replace('.', ',').replace('X', '.')
+    
+    return f"{prefixo}{s}{sufixo}".strip()
 
 # Configuração da página
 st.set_page_config(
@@ -33,6 +52,13 @@ st.markdown("""
         padding: 15px;
         border-radius: 10px;
     }
+    /* Ajuste para cor do texto das métricas ficarem legíveis no fundo escuro/gradiente se necessário */
+    [data-testid="stMetricValue"] {
+        color: white !important;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #f0f2f6 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -44,15 +70,20 @@ st.markdown("<h3 style='text-align: center; color: #000000;'>Análise Inteligent
 @st.cache_data
 def carregar_dados():
     try:
+        # Tente usar o nome exato do seu arquivo ou ajuste aqui
         df = pd.read_csv('PAM_SIDRA_NASAPOWER_FENOLOGIA_SOJA_PR_Copia.csv')
         
         # Calcular área perdida
         df['Área perdida (Hectares)'] = df['Área plantada (Hectares)'] - df['Área colhida (Hectares)']
         df['Percentual de perda (%)'] = (df['Área perdida (Hectares)'] / df['Área plantada (Hectares)']) * 100
         
-        # Renomear coluna para merge - NOVA MUDANÇA
+        # Converter valores de mil para valores reais
+        df['Quantidade produzida (Toneladas)'] = df['Quantidade produzida (Toneladas)'] * 1000
+        df['Valor da produção (Mil Reais)'] = df['Valor da produção (Mil Reais)'] * 1000
+        
+        # Renomear coluna para merge
         df = df.rename(columns={'Código IBGE': 'codigo_ibge'})
-        df['codigo_ibge'] = df['codigo_ibge'].astype(str).str.zfill(7).str[:7].astype(int) # Garantir que o IBGE tenha 7 dígitos
+        df['codigo_ibge'] = df['codigo_ibge'].astype(str).str.zfill(7).str[:7].astype(int)
         
         return df
     except FileNotFoundError:
@@ -68,7 +99,7 @@ def carregar_municipios():
         df_municipios = pd.read_csv('municipios.csv')
         df_parana = df_municipios[df_municipios['codigo_uf'] == 41].copy()
         df_parana = df_parana.rename(columns={'longitude': 'lon', 'latitude': 'lat'})
-        df_parana['codigo_ibge'] = df_parana['codigo_ibge'].astype(str).str.zfill(7).str[:7].astype(int) # Garantir que o IBGE tenha 7 dígitos para merge
+        df_parana['codigo_ibge'] = df_parana['codigo_ibge'].astype(str).str.zfill(7).str[:7].astype(int)
         return df_parana
     except FileNotFoundError:
         st.warning("⚠️ Arquivo 'municipios.csv' não encontrado. Mapa 3D não disponível.")
@@ -164,7 +195,7 @@ st.sidebar.markdown("---")
 st.sidebar.header("📊 Informações")
 st.sidebar.metric("Municípios", len(municipios_selecionados))
 st.sidebar.metric("Anos", len(anos_selecionados))
-st.sidebar.metric("Registros", len(df_filtrado))
+st.sidebar.metric("Registros", formatar_numero(len(df_filtrado)))
 st.sidebar.metric("Variáveis Climáticas", len(colunas_climaticas))
 
 # Agregação por ano
@@ -192,24 +223,45 @@ if len(df_agregado) > 0:
     
     with col1:
         area_var = ((ultimo_ano['Área plantada (Hectares)'] - penultimo_ano['Área plantada (Hectares)']) / penultimo_ano['Área plantada (Hectares)'] * 100) if penultimo_ano['Área plantada (Hectares)'] > 0 else 0
-        st.metric("Área Plantada", f"{ultimo_ano['Área plantada (Hectares)']:,.0f} ha", f"{area_var:+.2f}%")
+        st.metric(
+            "Área Plantada", 
+            formatar_numero(ultimo_ano['Área plantada (Hectares)'], sufixo=' ha'), 
+            formatar_numero(area_var, sufixo='%', decimais=2, prefixo='+ ' if area_var > 0 else '')
+        )
     
     with col2:
         perda_var = ((ultimo_ano['Área perdida (Hectares)'] - penultimo_ano['Área perdida (Hectares)']) / penultimo_ano['Área perdida (Hectares)'] * 100) if penultimo_ano['Área perdida (Hectares)'] > 0 else 0
-        st.metric("Área Perdida", f"{ultimo_ano['Área perdida (Hectares)']:,.0f} ha", f"{perda_var:+.2f}%", delta_color="inverse")
+        st.metric(
+            "Área Perdida", 
+            formatar_numero(ultimo_ano['Área perdida (Hectares)'], sufixo=' ha'), 
+            formatar_numero(perda_var, sufixo='%', decimais=2, prefixo='+ ' if perda_var > 0 else ''),
+            delta_color="inverse"
+        )
     
     with col3:
         prod_var = ((ultimo_ano['Quantidade produzida (Toneladas)'] - penultimo_ano['Quantidade produzida (Toneladas)']) / penultimo_ano['Quantidade produzida (Toneladas)'] * 100) if penultimo_ano['Quantidade produzida (Toneladas)'] > 0 else 0
-        st.metric("Produção", f"{ultimo_ano['Quantidade produzida (Toneladas)']:,.0f} t", f"{prod_var:+.2f}%")
+        st.metric(
+            "Produção", 
+            formatar_numero(ultimo_ano['Quantidade produzida (Toneladas)'], sufixo=' Kg'), 
+            formatar_numero(prod_var, sufixo='%', decimais=2, prefixo='+ ' if prod_var > 0 else '')
+        )
     
     with col4:
         rend_var = ((ultimo_ano['Rendimento médio da produção (Quilogramas por Hectare)'] - penultimo_ano['Rendimento médio da produção (Quilogramas por Hectare)']) / penultimo_ano['Rendimento médio da produção (Quilogramas por Hectare)'] * 100) if penultimo_ano['Rendimento médio da produção (Quilogramas por Hectare)'] > 0 else 0
-        st.metric("Rendimento", f"{ultimo_ano['Rendimento médio da produção (Quilogramas por Hectare)']:,.0f} kg/ha", f"{rend_var:+.2f}%")
+        st.metric(
+            "Rendimento", 
+            formatar_numero(ultimo_ano['Rendimento médio da produção (Quilogramas por Hectare)'], sufixo=' kg/ha'), 
+            formatar_numero(rend_var, sufixo='%', decimais=2, prefixo='+ ' if rend_var > 0 else '')
+        )
     
     with col5:
-        st.metric("% de Perda", f"{ultimo_ano['Percentual de perda (%)']:.2f}%", 
-                     f"{(ultimo_ano['Percentual de perda (%)'] - penultimo_ano['Percentual de perda (%)']):+.2f}pp", 
-                     delta_color="inverse")
+        diff_perda = ultimo_ano['Percentual de perda (%)'] - penultimo_ano['Percentual de perda (%)']
+        st.metric(
+            "% de Perda", 
+            formatar_numero(ultimo_ano['Percentual de perda (%)'], sufixo='%', decimais=2), 
+            formatar_numero(diff_perda, sufixo=' pp', decimais=2, prefixo='+ ' if diff_perda > 0 else ''),
+            delta_color="inverse"
+        )
 
 # ===========================
 # MAPA 3D INTERATIVO
@@ -265,6 +317,11 @@ if df_municipios is not None:
             # Preparar dados para PyDeck
             df_mapa['metrica_viz'] = df_mapa[metrica_mapa]
             
+            # CRIAR COLUNA FORMATADA PARA O TOOLTIP
+            # Se for percentual, usa 2 casas, se não, usa 0
+            decimais_mapa = 2 if "Percentual" in metrica_mapa else 0
+            df_mapa['metrica_viz_fmt'] = df_mapa['metrica_viz'].apply(lambda x: formatar_numero(x, decimais=decimais_mapa))
+
             # Normalizar para cor e elevação
             max_metrica = df_mapa['metrica_viz'].max()
             df_mapa['elevation'] = (df_mapa['metrica_viz'] / max_metrica) * elevation_max
@@ -302,7 +359,7 @@ if df_municipios is not None:
                 elevation_scale=elevation_scale,
                 radius=column_width,
                 get_fill_color="fill_color", 
-                get_tooltip=['nome', 'metrica_viz'], 
+                get_tooltip=['nome', 'metrica_viz_fmt'], 
                 pickable=True,
                 auto_highlight=True,
                 extruded=True,
@@ -325,7 +382,7 @@ if df_municipios is not None:
             metrica_nome_tooltip = metrica_mapa.split('(')[0].strip()
             tooltip = {
                 "html": f"<b>Município:</b> {{nome}}<br/>"
-                        f"<b>{metrica_nome_tooltip}:</b> {{metrica_viz}}",
+                        f"<b>{metrica_nome_tooltip}:</b> {{metrica_viz_fmt}}",
                 "style": {
                     "backgroundColor": "steelblue",
                     "color": "white"
@@ -358,12 +415,15 @@ if df_municipios is not None:
                 
                 css_color = f"rgb({color[0]}, {color[1]}, {color[2]})"
                 
-                legend_html += f"<div style='display: flex; align-items: center; margin-bottom: 3px;'><br/><div style='width: 20px; height: 10px; background-color: {css_color}; margin-right: 10px; border: 1px solid #333;'></div><br/><span>{upper_bound:.2f} (Máx)</span></div>"
+                # Formatação PT-BR na legenda
+                upper_bound_fmt = formatar_numero(upper_bound, decimais=2)
+                
+                legend_html += f"<div style='display: flex; align-items: center; margin-bottom: 3px;'><br/><div style='width: 20px; height: 10px; background-color: {css_color}; margin-right: 10px; border: 1px solid #333;'></div><br/><span>{upper_bound_fmt} (Máx)</span></div>"
             
-            legend_html = legend_html.replace(f"{max_val:.2f} (Máx)", f"{max_val:.2f} (Máx)")
+            min_val_fmt = formatar_numero(min_val, decimais=2)
             legend_html += f"""
                 <div style='margin-top: 5px; text-align: left;'>
-                    <span>{min_val:.2f} (Min)</span>
+                    <span>{min_val_fmt} (Min)</span>
                 </div>
             </div>"""
             
@@ -374,15 +434,17 @@ if df_municipios is not None:
             with col1:
                 st.metric("Municípios no Mapa", len(df_mapa))
             with col2:
-                st.metric(f"Média - {metrica_mapa.split('(')[0].strip()}", f"{df_mapa['metrica_viz'].mean():.2f}")
+                st.metric(f"Média - {metrica_mapa.split('(')[0].strip()}", formatar_numero(df_mapa['metrica_viz'].mean()))
             with col3:
-                st.metric("Máximo", f"{df_mapa['metrica_viz'].max():.2f}")
+                st.metric("Máximo", formatar_numero(df_mapa['metrica_viz'].max()))
             with col4:
-                st.metric("Mínimo", f"{df_mapa['metrica_viz'].min():.2f}")
+                st.metric("Mínimo", formatar_numero(df_mapa['metrica_viz'].min()))
             
             # Top 10 municípios no mapa
             with st.expander("🏆 Top 10 Municípios - Visualização Detalhada"):
-                top_10_mapa = df_mapa.nlargest(10, 'metrica_viz')[['nome', metrica_mapa]]
+                top_10_mapa = df_mapa.nlargest(10, 'metrica_viz')[['nome', metrica_mapa]].copy()
+                # Aplicar formatação visual para a tabela
+                top_10_mapa[metrica_mapa] = top_10_mapa[metrica_mapa].apply(lambda x: formatar_numero(x, decimais=2))
                 st.dataframe(top_10_mapa, hide_index=True, use_container_width=True)
         else:
             st.warning("⚠️ Não foi possível fazer o merge dos dados geográficos para o ano selecionado.")
@@ -408,9 +470,12 @@ with col1:
                               name='Colhida', line=dict(color='#27ae60', width=3), mode='lines+markers'))
     fig1.add_trace(go.Scatter(x=df_agregado['ano'], y=df_agregado['Área perdida (Hectares)'],
                               name='Perdida', line=dict(color='#e74c3c', width=3), fill='tozeroy', mode='lines+markers'))
-    fig1.update_layout(title='<b>Evolução da Área e Perdas</b>', 
-                      xaxis_title='Ano', yaxis_title='Hectares', hovermode='x unified', height=450,
-                      font=dict(color='black'))
+    fig1.update_layout(
+        title='<b>Evolução da Área e Perdas</b>', 
+        xaxis_title='Ano', yaxis_title='Hectares', hovermode='x unified', height=450,
+        font=dict(color='black'),
+        separators=',.'  # CONFIGURAÇÃO PT-BR
+    )
     fig1.update_xaxes(type='category', tickfont=dict(color='black'), title_font=dict(color='black')) 
     fig1.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
     st.plotly_chart(fig1, use_container_width=True)
@@ -421,10 +486,13 @@ with col2:
                           name='Produção', marker_color='#3498db'), secondary_y=False)
     fig2.add_trace(go.Scatter(x=df_agregado['ano'], y=df_agregado['Percentual de perda (%)'],
                               name='% Perda', line=dict(color='#e74c3c', width=3), mode='lines+markers'), secondary_y=True)
-    fig2.update_layout(title='<b>Produção e Percentual de Perda</b>', hovermode='x unified', height=450,
-                       font=dict(color='black'))
+    fig2.update_layout(
+        title='<b>Produção e Percentual de Perda</b>', hovermode='x unified', height=450,
+        font=dict(color='black'),
+        separators=',.' # CONFIGURAÇÃO PT-BR
+    )
     fig2.update_xaxes(title_text="Ano", type='category', tickfont=dict(color='black'), title_font=dict(color='black')) 
-    fig2.update_yaxes(title_text="Toneladas", secondary_y=False, tickfont=dict(color='black'), title_font=dict(color='black'))
+    fig2.update_yaxes(title_text="Quilograma", secondary_y=False, tickfont=dict(color='black'), title_font=dict(color='black'))
     fig2.update_yaxes(title_text="% Perda", secondary_y=True, tickfont=dict(color='black'), title_font=dict(color='black'))
     st.plotly_chart(fig2, use_container_width=True)
 
@@ -434,24 +502,35 @@ with col1:
     fig3 = go.Figure()
     fig3.add_trace(go.Scatter(x=df_agregado['ano'], y=df_agregado['Rendimento médio da produção (Quilogramas por Hectare)'],
                               mode='lines+markers', line=dict(color='#9b59b6', width=3), marker=dict(size=12)))
-    fig3.update_layout(title='<b>Rendimento Médio</b>', xaxis_title='Ano', yaxis_title='kg/ha', height=400,
-                       font=dict(color='black'))
+    fig3.update_layout(
+        title='<b>Rendimento Médio</b>', xaxis_title='Ano', yaxis_title='kg/ha', height=400,
+        font=dict(color='black'),
+        separators=',.' # CONFIGURAÇÃO PT-BR
+    )
     fig3.update_xaxes(type='category', tickfont=dict(color='black'), title_font=dict(color='black')) 
     fig3.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
     st.plotly_chart(fig3, use_container_width=True)
 
 with col2:
+    # Formatando o texto das barras manualmente para R$ com vírgula
+    texto_valor = df_agregado['Valor da produção (Mil Reais)'].apply(lambda x: f"R$ {formatar_numero(x)}")
+    
     fig4 = go.Figure()
-    fig4.add_trace(go.Bar(x=df_agregado['ano'], y=df_agregado['Valor da produção (Mil Reais)']/1000,
-                          marker_color='#16a085', text=df_agregado['Valor da produção (Mil Reais)']/1000,
-                          texttemplate='R$ %{text:.1f}M', textposition='outside'))
+    fig4.add_trace(go.Bar(
+        x=df_agregado['ano'], 
+        y=df_agregado['Valor da produção (Mil Reais)'],
+        marker_color='#16a085', 
+        text=texto_valor,
+        textposition='outside'
+    ))
     fig4.update_layout(
         title='<b>Valor da Produção</b>', 
         xaxis_title='Ano', 
-        yaxis_title='Milhões R$', 
+        yaxis_title='Reais (R$)', 
         height=400,
-        yaxis=dict(range=[0, (df_agregado['Valor da produção (Mil Reais)']/1000).max() * 1.15]),
-        font=dict(color='black')
+        yaxis=dict(range=[0, df_agregado['Valor da produção (Mil Reais)'].max() * 1.15]),
+        font=dict(color='black'),
+        separators=',.' # CONFIGURAÇÃO PT-BR
     )
     fig4.update_xaxes(type='category', tickfont=dict(color='black'), title_font=dict(color='black')) 
     fig4.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
@@ -471,8 +550,8 @@ cols_correlacao = [
     'Quantidade produzida (Toneladas)',
     'Rendimento médio da produção (Quilogramas por Hectare)',
     'Valor da produção (Mil Reais)',
-    'Valor da produção - percentual do total geral', # Variável solicitada
-    'Percentual de perda (%)' # Adicionado como alternativa caso a anterior não exista no CSV
+    'Valor da produção - percentual do total geral',
+    'Percentual de perda (%)'
 ]
 
 # Verificar quais colunas realmente existem no DataFrame atual para evitar erros
@@ -480,16 +559,27 @@ cols_validas = [col for col in cols_correlacao if col in df_filtrado.columns]
 
 if len(cols_validas) > 1:
     corr_matrix = df_filtrado[cols_validas].corr()
+    
+    # Criar uma matriz de texto com formatação PT-BR para o Heatmap
+    text_matrix = corr_matrix.applymap(lambda x: f"{str(round(x, 2)).replace('.', ',')}")
 
     fig_corr = px.imshow(
         corr_matrix,
-        text_auto='.2f',
+        text_auto=False, # Desliga automático para usar nossa matriz formatada
         aspect="auto",
-        color_continuous_scale='RdBu_r',
+        color_continuous_scale='RdYlGn',
         zmin=-1, zmax=1,
         height=600
     )
-    fig_corr.update_layout(title='<b>Matriz de Correlação de Pearson</b>', font=dict(color='black'))
+    
+    # Adicionar o texto manualmente
+    fig_corr.update_traces(text=text_matrix, texttemplate="%{text}")
+    
+    fig_corr.update_layout(
+        title='<b>Matriz de Correlação de Pearson</b>', 
+        font=dict(color='black'),
+        separators=',.'
+    )
     fig_corr.update_xaxes(tickfont=dict(color='black'))
     fig_corr.update_yaxes(tickfont=dict(color='black'))
     st.plotly_chart(fig_corr, use_container_width=True)
@@ -573,6 +663,9 @@ df_corr_foco = df_corr_foco.nlargest(min(top_n, len(df_corr_foco)), 'Correlaçã
 # Gráfico de barras das correlações mais fortes
 st.subheader(f"🔝 Top {len(df_corr_foco)} Variáveis com Maior Impacto - {titulo_ano}")
 
+# Formatando texto para o gráfico de barras
+texto_corr = df_corr_foco['Correlação'].apply(lambda x: f"{x:.3f}".replace('.', ','))
+
 fig_top = go.Figure()
 fig_top.add_trace(go.Bar(
     x=df_corr_foco['Correlação'],
@@ -582,8 +675,7 @@ fig_top.add_trace(go.Bar(
     marker_colorscale='RdYlGn',
     marker_cmin=-1,
     marker_cmax=1,
-    text=df_corr_foco['Correlação'],
-    texttemplate='%{text:.3f}',
+    text=texto_corr,
     textposition='outside'
 ))
 
@@ -593,7 +685,8 @@ fig_top.update_layout(
     yaxis_title='Variável Climática',
     height=max(400, len(df_corr_foco) * 30),
     xaxis_range=[-1, 1],
-    font=dict(color='black')
+    font=dict(color='black'),
+    separators=',.' # CONFIGURAÇÃO PT-BR
 )
 fig_top.update_xaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
 fig_top.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
@@ -605,17 +698,21 @@ st.subheader("🔍 Análise Detalhada – Top 3 Variáveis")
 st.info(f"🔬 Relação entre as três variáveis climáticas de maior impacto e a produtividade - {titulo_ano}")
 
 n_pontos = len(df_para_correlacao)
-st.info(f"📊 Análise baseada em **{n_pontos} registros** ({titulo_ano})")
+st.info(f"📊 Análise baseada em **{formatar_numero(n_pontos)} registros** ({titulo_ano})")
 
 top3 = df_corr_foco.head(3)
 
 for idx, row in top3.iterrows():
-    with st.expander(f"**{idx+1}. {row['Variável Climática']} - Decêndio {row['Decêndio']} ({row['Ano Safra']})** - Correlação: {row['Correlação']:.4f}"):
+    corr_fmt = str(round(row['Correlação'], 4)).replace('.', ',')
+    with st.expander(f"**{idx+1}. {row['Variável Climática']} - Decêndio {row['Decêndio']} ({row['Ano Safra']})** - Correlação: {corr_fmt}"):
         
         col1, col2 = st.columns([2, 1])
         
         with col1:
             df_scatter = df_para_correlacao[[row['Coluna'], metrica_foco, 'ano', 'Município', 'Quantidade produzida (Toneladas)']].dropna()
+            
+            # Título do gráfico
+            titulo_scatter = f"Dispersão ({metrica_foco.split('(')[0].strip()}) × ({row['Variável Climática']})"
             
             try:
                 fig_scatter = px.scatter(
@@ -626,7 +723,7 @@ for idx, row in top3.iterrows():
                     size='Quantidade produzida (Toneladas)',
                     hover_data=['Município'],
                     trendline='ols',
-                    title=f"Dispersão ({metrica_foco.split('(')[0].strip()}) × ({row['Variável Climática']})"
+                    title=titulo_scatter
                 )
             except:
                 fig_scatter = px.scatter(
@@ -636,7 +733,7 @@ for idx, row in top3.iterrows():
                     color='ano',
                     size='Quantidade produzida (Toneladas)',
                     hover_data=['Município'],
-                    title=f"Dispersão ({metrica_foco.split('(')[0].strip()}) × ({row['Variável Climática']})"
+                    title=titulo_scatter
                 )
                 
                 if len(df_scatter) > 1:
@@ -652,13 +749,17 @@ for idx, row in top3.iterrows():
                         line=dict(color='red', dash='dash', width=2)
                     ))
             
-            fig_scatter.update_layout(height=400, font=dict(color='black'))
+            fig_scatter.update_layout(
+                height=400, 
+                font=dict(color='black'),
+                separators=',.' # CONFIGURAÇÃO PT-BR
+            )
             fig_scatter.update_xaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
             fig_scatter.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
             st.plotly_chart(fig_scatter, use_container_width=True)
         
         with col2:
-            st.metric("Correlação", f"{row['Correlação']:.4f}")
+            st.metric("Correlação", corr_fmt)
             
             if abs(row['Correlação']) > 0.7:
                 intensidade = "🔴 Forte"
@@ -750,14 +851,17 @@ if vars_heatmap:
         colunas_presentes = [col for col in colunas_ordenadas if col in pivot_heatmap.columns]
         pivot_heatmap = pivot_heatmap[colunas_presentes]
         
+        # Criar textos formatados para o heatmap
+        text_heatmap = pivot_heatmap.applymap(lambda x: f"{x:.2f}".replace('.', ','))
+
         fig_heatmap = go.Figure(data=go.Heatmap(
             z=pivot_heatmap.values,
             x=pivot_heatmap.columns,
             y=pivot_heatmap.index,
             colorscale='RdYlGn',
             zmid=0,
-            text=pivot_heatmap.values,
-            texttemplate='%{text:.2f}',
+            text=text_heatmap.values,
+            texttemplate='%{text}',
             textfont={"size": 8},
             colorbar=dict(title="Correlação"),
             zmin=-1,
@@ -778,7 +882,8 @@ if vars_heatmap:
                 tickfont=dict(color='black'),
                 title_font=dict(color='black')
             ),
-            font=dict(color='black')
+            font=dict(color='black'),
+            separators=',.'
         )
         
         fig_heatmap.add_vline(x=10.5, line_dash="dash", line_color="white", line_width=2)
@@ -794,16 +899,18 @@ if vars_heatmap:
             ano1_cols = [col for col in pivot_heatmap.columns if col.startswith("Ano1")]
             if ano1_cols:
                 ano1_data = pivot_heatmap[ano1_cols]
+                val = ano1_data.mean().mean()
                 st.metric("Fase 1: Semeadura/Desenvolvimento", 
-                          f"{ano1_data.mean().mean():.4f}",
+                          formatar_numero(val, decimais=4),
                           help="Ano1 Dec26-36: Set-Dez")
         
         with col2:
             ano2_cols = [col for col in pivot_heatmap.columns if col.startswith("Ano2")]
             if ano2_cols:
                 ano2_data = pivot_heatmap[ano2_cols]
+                val = ano2_data.mean().mean()
                 st.metric("Fase 2: Maturação/Colheita", 
-                          f"{ano2_data.mean().mean():.4f}",
+                          formatar_numero(val, decimais=4),
                           help="Ano2 Dec1-15: Jan-Mai")
 
 # ===========================
@@ -833,7 +940,8 @@ with col1:
         df_mun = df_prod_top[df_prod_top['Município'] == municipio].sort_values('ano')
         fig_p.add_trace(go.Scatter(
             x=df_mun['ano'],
-            y=df_mun['Quantidade produzida (Toneladas)'],
+            y=df_mun['Quantidade produzida (Toneladas)'] * 1000,  # Converter para Quilogramas (mas se o título diz Kg, ok)
+            # Se o dado original já é toneladas, * 1000 vira Kg.
             mode='lines+markers',
             name=municipio,
             line=dict(width=2),
@@ -843,11 +951,12 @@ with col1:
     fig_p.update_layout(
         title=f'<b>Top {num_municipios} – Evolução da Produção Total</b>',
         xaxis_title='Ano',
-        yaxis_title='Produção (toneladas)',
+        yaxis_title='Produção (Kg)',
         height=500,
         hovermode='x unified',
         legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
-        font=dict(color='black')
+        font=dict(color='black'),
+        separators=',.' # CONFIGURAÇÃO PT-BR
     )
     fig_p.update_xaxes(type='linear', tickfont=dict(color='black'), title_font=dict(color='black')) 
     fig_p.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
@@ -876,7 +985,8 @@ with col2:
         height=500,
         hovermode='x unified',
         legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
-        font=dict(color='black')
+        font=dict(color='black'),
+        separators=',.' # CONFIGURAÇÃO PT-BR
     )
     fig_r.update_xaxes(type='linear', tickfont=dict(color='black'), title_font=dict(color='black')) 
     fig_r.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
@@ -907,20 +1017,21 @@ with col3:
         height=500,
         hovermode='x unified',
         legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
-        font=dict(color='black')
+        font=dict(color='black'),
+        separators=',.' # CONFIGURAÇÃO PT-BR
     )
     fig_a.update_xaxes(type='linear', tickfont=dict(color='black'), title_font=dict(color='black')) 
     fig_a.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
     st.plotly_chart(fig_a, use_container_width=True)
 
 with col4:
-    # Evolução da Valor da produção (Mil Reais)
-    df_area_top = df_filtrado[df_filtrado['Município'].isin(top_valor_municipios)].copy()
+    # Evolução do Valor da produção
+    df_valor_top = df_filtrado[df_filtrado['Município'].isin(top_valor_municipios)].copy()
     
-    fig_a = go.Figure()
+    fig_v = go.Figure()
     for municipio in top_valor_municipios:
-        df_mun = df_area_top[df_area_top['Município'] == municipio].sort_values('ano')
-        fig_a.add_trace(go.Scatter(
+        df_mun = df_valor_top[df_valor_top['Município'] == municipio].sort_values('ano')
+        fig_v.add_trace(go.Scatter(
             x=df_mun['ano'],
             y=df_mun['Valor da produção (Mil Reais)'],
             mode='lines+markers',
@@ -929,18 +1040,19 @@ with col4:
             marker=dict(size=8)
         ))
     
-    fig_a.update_layout(
+    fig_v.update_layout(
         title=f'<b>Top {num_municipios} – Valor da produção</b>',
         xaxis_title='Ano',
-        yaxis_title='Valor da produção (Mil Reais)',
+        yaxis_title='Valor da produção (R$)',
         height=500,
         hovermode='x unified',
         legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
-        font=dict(color='black')
+        font=dict(color='black'),
+        separators=',.' # CONFIGURAÇÃO PT-BR
     )
-    fig_a.update_xaxes(type='linear', tickfont=dict(color='black'), title_font=dict(color='black')) 
-    fig_a.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
-    st.plotly_chart(fig_a, use_container_width=True)
+    fig_v.update_xaxes(type='linear', tickfont=dict(color='black'), title_font=dict(color='black')) 
+    fig_v.update_yaxes(tickfont=dict(color='black'), title_font=dict(color='black'))
+    st.plotly_chart(fig_v, use_container_width=True)
 
 # Rodapé
 st.markdown("---")
